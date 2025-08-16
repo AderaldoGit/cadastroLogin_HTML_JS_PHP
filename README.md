@@ -26,19 +26,19 @@ CREATE TABLE usuarios (
 
 ## 📂 Estrutura de arquivos
 
-/cadastro_login_HTML_JS_PHP
-  ├── index.html
-  ├── painel.html
-  └── banco.sql
-  /php
-    ├── conexao.php
-    ├── register.php
-    ├── login.php
-    └── logout.php
-  /js
-    └── script.js
-  /css
-    └── style.css
+-/cadastro_login_HTML_JS_PHP
+-  ├── index.html
+-  ├── painel.html
+-  └── banco.sql
+-  /php
+-    ├── conexao.php
+-    ├── register.php
+-    ├── login.php
+-    └── logout.php
+-  /js
+-    └── script.js
+-  /css
+-    └── style.css
 
 ## 🔌 Conexão com banco (conexao.php):
     <?php
