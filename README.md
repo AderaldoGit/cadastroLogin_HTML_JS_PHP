@@ -1,90 +1,151 @@
-# Cadastro e Login com HTML/JS/PHP - Servidor
+# Cadastro, Login e Logout com HTML/JS/PHP - Servidor
 
 ## 🧾 Resumo
 
-Sistema de gerenciamento de vendas voltado para lojas físicas, com suporte a múltiplos terminais conectados em rede.
+Sistema de cadastro, login e logout usando PHP (com PDO, hash e sessões seguras) + JavaScript puro com fetch().
 
-- **Objetivo:** Gerenciar vendas, caixas e impressão de cupons
-- **Tecnologia:** Electron, Node.js, Express, Cors, OS, Dotenv, Jsonwebtoken, Bcrypt, SQLite ou MySQL
-- **Estrutura:** 1 servidor (PC principal) + vários clientes conectados em rede
-- **Impressão:** Térmica 48mm (ESC/POS)
-- **Dispositivos:** Leitor de código de barras + Teclado
+- **Cadastrar:** Cadastrar Usuários
+- **Login:** Fazer Login com segurança 
+- **Logout:** Efetuar Logout com segurança
+- **Linguagens:** HTML/CSS/JS/PHP
+- **Banco de Dados:** Banco de dados MySQL (banco.sql)
 
-## 🚀 Tecnologias e Bibliotecas utilizadas
+## 🚀 Criando Banco de Dados:
 
-- Electron
-- Node.js
-- Express
-- Cors
-- OS
-- Dotenv
-- Jsonwebtoken
-- Bcrypt
-- MySQL ou SQLite (configurável)
+CREATE DATABASE sistema_login DEFAULT CHARACTER SET utf8mb4;
 
-## Como usar
-1. Clone este repositório
-2. Instale as dependências
-3. Rode o projeto com `node main.js`, `nodemon main.js`
+USE sistema_login;
 
-## LOGIN
-    ROTA MÉTODO POST = /auth
-    JSON {
-        cpf: "00000000000",
-        senha: "senha"
+CREATE TABLE usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    senha VARCHAR(255) NOT NULL
+);
+
+
+## 📂 Estrutura de arquivos
+
+/cadastro_login_HTML_JS_PHP
+  ├── index.html
+  ├── painel.html
+  └── banco.sql
+  /php
+    ├── conexao.php
+    ├── register.php
+    ├── login.php
+    └── logout.php
+  /js
+    └── script.js
+  /css
+    └── style.css
+
+## 🔌 Conexão com banco (conexao.php):
+    <?php
+    $host = "localhost";
+    $dbname = "sistema_login";
+    $usuario = "root"; // altere se necessário
+    $senha = "";
+
+    try {
+        // Criamos a conexão PDO (segura contra SQL Injection)
+        $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $usuario, $senha);
+        // Aqui Define modo de erro como exceção
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    } catch (PDOException $e) {
+        die("Erro na conexão: " . $e->getMessage());
     }
 
-    RETORNO:
+## 📝 Cadastro (register.php):
+    <?php
+    session_start(); //Comando para iniciar sessão
+    require "conexao.php"; // import
 
-    JSON {
-        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MzEsImlhdCI6MTc0ODcxMzU5MiwiZXhwIjoxNzQ4NzQyMzkyfQ.IxhKIX3CX0ykSOjUzvYr-FUSw9Ycl9PxioKv2jRyY30"
-    }
-    ou 
-    JSON {
-        "erro": "Usuário não encontrado"
-    }
-    ou
-    JSON {
-        "erro": "Senha inválida"
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Limpa e valida os dados recebidos que chega via Método POST
+        $nome  = trim($_POST['nome']);
+        $email = filter_var($_POST['email'], FILTER_VALIDATE_EMAIL);
+        $senha = $_POST['senha'];
+
+        // Verifica os dados e confere se a senha cumpre os requisitos maior ou igual a 6 digitos
+        if (!$nome || !$email || strlen($senha) < 6) {
+            http_response_code(400);
+            echo "Dados inválidos";
+            exit;
+        }
+
+        // Verifica se o e-mail já está cadastrado no sistema
+        $stmt = $pdo->prepare("SELECT id FROM usuarios WHERE email = ?");
+        $stmt->execute([$email]);
+        if ($stmt->rowCount() > 0) {
+            http_response_code(409); // Conflito
+            echo "E-mail já cadastrado";
+            exit;
+        }
+
+        // Cria hash de segurança da senha
+        $hash = password_hash($senha, PASSWORD_DEFAULT);
+
+        // Cadastra usuário no banco
+        $stmt = $pdo->prepare("INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)");
+        $stmt->execute([$nome, $email, $hash]);
+
+        echo "Cadastro realizado com sucesso!";
     }
 
-## STATUS DO SISTEMA
-    ROTA MÉTODO GET = /status
-    
-    RETORNO:
-    
-    JSON {
-        "status": "Online",
-        "ip": "192.XXX.X.XXX",
-        "port": "XXXX"
+## 📝 Login (login.php):
+    <?php
+    session_start();
+    require "conexao.php";
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $email = filter_var($_POST['email'], FILTER_VALIDATE_EMAIL);
+        $senha = $_POST['senha'];
+
+        if (!$email || !$senha) {
+            http_response_code(400);
+            echo "Dados inválidos";
+            exit;
+        }
+
+        // Pesquisa usuário no banco de dados
+        $stmt = $pdo->prepare("SELECT id, nome, senha FROM usuarios WHERE email = ?");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // Verifica senha
+        if ($user && password_verify($senha, $user['senha'])) {
+            // Regenera ID da sessão para evitar fixação
+            session_regenerate_id(true);
+
+            $_SESSION['user_id']   = $user['id'];
+            $_SESSION['user_nome'] = $user['nome'];
+
+            echo "Sucesso";
+        } else {
+            http_response_code(401); // Não autorizado
+            echo "E-mail ou senha inválidos";
+        }
     }
 
-## CRUD USUÁRIOS
-    ROTA CADASTRO - MÉTODO POST = /users
+## 🚪 Logout (logout.php)
+    <?php
+    session_start();
+    session_unset(); // limpa variáveis da sessão iniciada
+    session_destroy(); // encerra e elimina sessão
+    echo "Logout realizado";
 
-    ENVIO:
+## 🔒 Página protegida (painel.html)
 
-    JSON {
-        "nome": "NOME COMPLETO",
-        "cpf":"XXXXXXXXXXX", 
-        "cep":"XXXXXXXX", 
-        "logradouro":"ENDEREÇO COMPLETO", 
-        "numero":"XXXX", 
-        "cargo":"CARGO", 
-        "contato":"XXXXXXXXXXX", 
-        "recado":"XXXXXXXXXXX", 
-        "nivel":"X",
-        "senha": "sehha"
-    }
-    
-    RETORNO:
-    
-    JSON {
-        "status": "Online",
-        "ip": "192.XXX.X.XXX",
-        "port": "XXXX"
-    }
+
+
+
+## 🌐 Pagina inicial (index.html)
+
+## JS - Script fetch() puro no JavaScript
+
+## CSS - Style - Estilização da página
 
 
 ## Autor
-- [@seuUsuarioGitHub](https://github.com/AderaldoGit/KimPOS-Server)
+- [@seuUsuarioGitHub](https://github.com/AderaldoGit/cadastroLogin_HTML_JS_PHP)
