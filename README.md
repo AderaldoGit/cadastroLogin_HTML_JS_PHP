@@ -12,15 +12,15 @@ Sistema de cadastro, login e logout usando PHP (com PDO, hash e sessões seguras
 
 ## 🚀 Criando Banco de Dados:
 
-CREATE DATABASE sistema_login DEFAULT CHARACTER SET utf8mb4;
+ CREATE DATABASE IF NOT EXISTS sistema_login DEFAULT CHARACTER SET utf8mb4;
 
 USE sistema_login;
 
-CREATE TABLE usuarios (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE,
-    senha VARCHAR(255) NOT NULL
+CREATE TABLE IF NOT EXISTS usuarios ( 
+    id INT AUTO_INCREMENT PRIMARY KEY, 
+    nome VARCHAR(100) NOT NULL, 
+    email VARCHAR(150) NOT NULL UNIQUE, 
+    senha VARCHAR(255) NOT NULL 
 );
 
 
